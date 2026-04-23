@@ -8,7 +8,7 @@ const {
   EModelEndpoint,
   PermissionTypes,
 } = require('librechat-data-provider');
-const { getRoleByName, getFiles } = require('~/models');
+const { getRoleByName, getGroupRoleNames, getFiles } = require('~/models');
 
 /**
  * Process file search results from tool calls
@@ -35,6 +35,7 @@ async function processFileCitations({ user, appConfig, toolArtifact, toolCallId,
             permissionType: PermissionTypes.FILE_CITATIONS,
             permissions: [Permissions.USE],
             getRoleByName,
+            getGroupRoleNames,
           }));
 
         if (!hasFileCitationsAccess) {

@@ -440,6 +440,7 @@ class AgentClient extends BaseClient {
       permissionType: PermissionTypes.MEMORIES,
       permissions: [Permissions.USE],
       getRoleByName: db.getRoleByName,
+      getGroupRoleNames: db.getGroupRoleNames,
     });
 
     if (!hasAccess) {

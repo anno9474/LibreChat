@@ -6,6 +6,7 @@ import {
   PermissionTypes,
   isAgentsEndpoint,
 } from 'librechat-data-provider';
+import type { Types } from 'mongoose';
 import type { NextFunction, Request as ServerRequest, Response as ServerResponse } from 'express';
 import type { IRole, IUser } from '@librechat/data-schemas';
 
@@ -34,12 +35,37 @@ export function skipAgentCheck(req?: ServerRequest): boolean {
  * @param skipCheck - An optional function that takes the checkObject and returns true to skip permission checking
  * @returns Whether the user has the required permissions
  */
+function checkRolePermission(
+  role: IRole,
+  permissionType: PermissionTypes,
+  permissions: Permissions[],
+  bodyProps: Record<Permissions, string[]>,
+  checkObject: object,
+): boolean {
+  const permissionValue = role.permissions?.[permissionType as keyof typeof role.permissions];
+  if (!role.permissions || !permissionValue) {
+    return false;
+  }
+  return permissions.every((permission) => {
+    if (permissionValue[permission as keyof typeof permissionValue]) {
+      return true;
+    }
+    if (bodyProps[permission] && checkObject) {
+      return bodyProps[permission].every((prop) =>
+        Object.prototype.hasOwnProperty.call(checkObject, prop),
+      );
+    }
+    return false;
+  });
+}
+
 export const checkAccess = async ({
   req,
   user,
   permissionType,
   permissions,
   getRoleByName,
+  getGroupRoleNames,
   bodyProps = {} as Record<Permissions, string[]>,
   checkObject = {},
   skipCheck,
@@ -53,6 +79,7 @@ export const checkAccess = async ({
   /** If skipCheck function is provided and returns true, skip permission checking */
   skipCheck?: (req?: ServerRequest) => boolean;
   getRoleByName: (roleName: string, fieldsToSelect?: string | string[]) => Promise<IRole | null>;
+  getGroupRoleNames?: (userId: string | Types.ObjectId) => Promise<string[]>;
 }): Promise<boolean> => {
   if (skipCheck && skipCheck(req)) {
     return true;
@@ -63,23 +90,21 @@ export const checkAccess = async ({
   }
 
   const role = await getRoleByName(user.role);
-  const permissionValue = role?.permissions?.[permissionType as keyof typeof role.permissions];
-  if (role && role.permissions && permissionValue) {
-    const hasAnyPermission = permissions.every((permission) => {
-      if (permissionValue[permission as keyof typeof permissionValue]) {
+  if (role && checkRolePermission(role, permissionType, permissions, bodyProps, checkObject)) {
+    return true;
+  }
+
+  if (getGroupRoleNames && user._id) {
+    const groupRoleNames = await getGroupRoleNames(user._id);
+    for (const roleName of groupRoleNames) {
+      const groupRole = await getRoleByName(roleName);
+      if (
+        groupRole &&
+        checkRolePermission(groupRole, permissionType, permissions, bodyProps, checkObject)
+      ) {
         return true;
       }
-
-      if (bodyProps[permission] && checkObject) {
-        return bodyProps[permission].every((prop) =>
-          Object.prototype.hasOwnProperty.call(checkObject, prop),
-        );
-      }
-
-      return false;
-    });
-
-    return hasAnyPermission;
+    }
   }
 
   return false;
@@ -100,12 +125,14 @@ export const generateCheckAccess = ({
   bodyProps = {} as Record<Permissions, string[]>,
   skipCheck,
   getRoleByName,
+  getGroupRoleNames,
 }: {
   permissionType: PermissionTypes;
   permissions: Permissions[];
   bodyProps?: Record<Permissions, string[]>;
   skipCheck?: (req?: ServerRequest) => boolean;
   getRoleByName: (roleName: string, fieldsToSelect?: string | string[]) => Promise<IRole | null>;
+  getGroupRoleNames?: (userId: string | Types.ObjectId) => Promise<string[]>;
 }): ((req: ServerRequest, res: ServerResponse, next: NextFunction) => Promise<unknown>) => {
   return async (req, res, next) => {
     try {
@@ -118,6 +145,7 @@ export const generateCheckAccess = ({
         checkObject: req.body,
         skipCheck,
         getRoleByName,
+        getGroupRoleNames,
       });
 
       if (hasAccess) {

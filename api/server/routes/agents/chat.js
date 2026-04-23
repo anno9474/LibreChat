@@ -11,7 +11,7 @@ const {
 const { initializeClient } = require('~/server/services/Endpoints/agents');
 const AgentController = require('~/server/controllers/agents/request');
 const addTitle = require('~/server/services/Endpoints/agents/title');
-const { getRoleByName } = require('~/models');
+const { getRoleByName, getGroupRoleNames } = require('~/models');
 
 const router = express.Router();
 
@@ -20,6 +20,7 @@ const checkAgentAccess = generateCheckAccess({
   permissions: [Permissions.USE],
   skipCheck: skipAgentCheck,
   getRoleByName,
+  getGroupRoleNames,
 });
 const checkAgentResourceAccess = canAccessAgentFromBody({
   requiredPermission: PermissionBits.VIEW,

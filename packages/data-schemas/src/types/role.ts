@@ -1,6 +1,6 @@
 import { PermissionTypes, Permissions } from 'librechat-data-provider';
 import type { DeepPartial } from 'librechat-data-provider';
-import type { Document } from 'mongoose';
+import type { Document, Types } from 'mongoose';
 import { CursorPaginationParams } from '~/common';
 
 export interface IRole extends Document {
@@ -67,6 +67,7 @@ export interface IRole extends Document {
       [Permissions.SHARE_PUBLIC]?: boolean;
     };
   };
+  groupIds?: Types.ObjectId[];
   tenantId?: string;
 }
 

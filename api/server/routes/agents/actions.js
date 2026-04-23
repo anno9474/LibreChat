@@ -27,6 +27,7 @@ const checkAgentCreate = generateCheckAccess({
   permissionType: PermissionTypes.AGENTS,
   permissions: [Permissions.USE, Permissions.CREATE],
   getRoleByName: db.getRoleByName,
+  getGroupRoleNames: db.getGroupRoleNames,
 });
 
 /**

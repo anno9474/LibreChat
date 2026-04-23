@@ -45,7 +45,7 @@ const { getUserPluginAuthValue } = require('~/server/services/PluginService');
 const { loadAuthValues } = require('~/server/services/Tools/credentials');
 const { getMCPServerTools } = require('~/server/services/Config');
 const { getMCPServersRegistry } = require('~/config');
-const { getRoleByName } = require('~/models');
+const { getRoleByName, getGroupRoleNames } = require('~/models');
 
 /**
  * Validates the availability and authentication of tools for a user based on environment variables or user-specific plugin authentication values.
@@ -308,6 +308,7 @@ const loadTools = async ({
               permissionType: PermissionTypes.FILE_CITATIONS,
               permissions: [Permissions.USE],
               getRoleByName,
+              getGroupRoleNames,
             });
           } catch (error) {
             logger.error('[handleTools] FILE_CITATIONS permission check failed:', error);

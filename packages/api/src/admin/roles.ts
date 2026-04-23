@@ -1,6 +1,6 @@
 import { PrincipalType, SystemRoles } from 'librechat-data-provider';
 import { logger, isValidObjectIdString, RoleConflictError } from '@librechat/data-schemas';
-import type { IRole, IUser, IConfig, AdminMember } from '@librechat/data-schemas';
+import type { IRole, IUser, IConfig, IGroup, AdminMember } from '@librechat/data-schemas';
 import type { FilterQuery, Types } from 'mongoose';
 import type { Response } from 'express';
 import type { ServerRequest } from '~/types/http';
@@ -22,7 +22,7 @@ const CONTROL_CHAR_RE = /\p{Cc}/u;
  * Express routing resolves this correctly (single vs multi-segment), but the URLs
  * are confusing for API consumers. Keep in sync with sub-path routes in routes/admin/roles.js.
  */
-const RESERVED_ROLE_NAMES = new Set(['members', 'permissions']);
+const RESERVED_ROLE_NAMES = new Set(['members', 'permissions', 'groups']);
 
 function validateNameParam(name: string): string | null {
   if (!name || typeof name !== 'string') {
@@ -121,6 +121,14 @@ export interface AdminRolesDeps {
     principalId: string | Types.ObjectId,
     options?: { tenantId?: string },
   ) => Promise<void>;
+  findGroupById: (groupId: string | Types.ObjectId) => Promise<IGroup | null>;
+  listGroupsByRole: (
+    name: string,
+    options?: { limit?: number; offset?: number },
+  ) => Promise<IGroup[]>;
+  countGroupsByRole: (name: string) => Promise<number>;
+  addGroupToRole: (name: string, groupId: string | Types.ObjectId) => Promise<IRole | null>;
+  removeGroupFromRole: (name: string, groupId: string | Types.ObjectId) => Promise<IRole | null>;
 }
 
 export function createAdminRolesHandlers(deps: AdminRolesDeps) {
@@ -142,6 +150,11 @@ export function createAdminRolesHandlers(deps: AdminRolesDeps) {
     deleteConfig,
     deleteAclEntries,
     deleteGrantsForPrincipal,
+    findGroupById,
+    listGroupsByRole,
+    countGroupsByRole,
+    addGroupToRole,
+    removeGroupFromRole,
   } = deps;
 
   async function listRolesHandler(req: ServerRequest, res: Response) {
@@ -568,6 +581,110 @@ export function createAdminRolesHandlers(deps: AdminRolesDeps) {
     }
   }
 
+  interface RoleGroupParams extends RoleNameParams {
+    groupId: string;
+  }
+
+  async function getRoleGroupsHandler(req: ServerRequest, res: Response) {
+    try {
+      const { name } = req.params as RoleNameParams;
+      const paramError = validateNameParam(name);
+      if (paramError) {
+        return res.status(400).json({ error: paramError });
+      }
+      const existing = await getRoleByName(name);
+      if (!existing) {
+        return res.status(404).json({ error: 'Role not found' });
+      }
+
+      const { limit, offset } = parsePagination(req.query);
+
+      const [groups, total] = await Promise.all([
+        listGroupsByRole(name, { limit, offset }),
+        countGroupsByRole(name),
+      ]);
+
+      const adminGroups = groups.map((g) => ({
+        _id: g._id.toString(),
+        name: g.name,
+        description: g.description,
+        source: g.source,
+        memberIds: g.memberIds,
+      }));
+
+      return res.status(200).json({ groups: adminGroups, total, limit, offset });
+    } catch (error) {
+      logger.error('[adminRoles] getRoleGroups error:', error);
+      return res.status(500).json({ error: 'Failed to get role groups' });
+    }
+  }
+
+  async function addRoleGroupHandler(req: ServerRequest, res: Response) {
+    try {
+      const { name } = req.params as RoleNameParams;
+      const paramError = validateNameParam(name);
+      if (paramError) {
+        return res.status(400).json({ error: paramError });
+      }
+
+      const { groupId } = req.body as { groupId: string };
+      if (!groupId || typeof groupId !== 'string') {
+        return res.status(400).json({ error: 'groupId is required' });
+      }
+      if (!isValidObjectIdString(groupId)) {
+        return res.status(400).json({ error: 'Invalid group ID format' });
+      }
+
+      const existing = await getRoleByName(name);
+      if (!existing) {
+        return res.status(404).json({ error: 'Role not found' });
+      }
+
+      const group = await findGroupById(groupId);
+      if (!group) {
+        return res.status(404).json({ error: 'Group not found' });
+      }
+
+      if (existing.groupIds?.some((id) => id.toString() === groupId)) {
+        return res.status(200).json({ success: true });
+      }
+
+      await addGroupToRole(name, groupId);
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      logger.error('[adminRoles] addRoleGroup error:', error);
+      return res.status(500).json({ error: 'Failed to add group to role' });
+    }
+  }
+
+  async function removeRoleGroupHandler(req: ServerRequest, res: Response) {
+    try {
+      const { name, groupId } = req.params as RoleGroupParams;
+      const paramError = validateNameParam(name);
+      if (paramError) {
+        return res.status(400).json({ error: paramError });
+      }
+      if (!isValidObjectIdString(groupId)) {
+        return res.status(400).json({ error: 'Invalid group ID format' });
+      }
+
+      const existing = await getRoleByName(name);
+      if (!existing) {
+        return res.status(404).json({ error: 'Role not found' });
+      }
+
+      if (!existing.groupIds?.some((id) => id.toString() === groupId)) {
+        return res.status(404).json({ error: 'Group not assigned to this role' });
+      }
+
+      await removeGroupFromRole(name, groupId);
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      logger.error('[adminRoles] removeRoleGroup error:', error);
+      return res.status(500).json({ error: 'Failed to remove group from role' });
+    }
+  }
+
   return {
     listRoles: listRolesHandler,
     getRole: getRoleHandler,
@@ -578,5 +695,8 @@ export function createAdminRolesHandlers(deps: AdminRolesDeps) {
     getRoleMembers: getRoleMembersHandler,
     addRoleMember: addRoleMemberHandler,
     removeRoleMember: removeRoleMemberHandler,
+    getRoleGroups: getRoleGroupsHandler,
+    addRoleGroup: addRoleGroupHandler,
+    removeRoleGroup: removeRoleGroupHandler,
   };
 }

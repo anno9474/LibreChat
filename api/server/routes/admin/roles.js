@@ -29,6 +29,11 @@ const handlers = createAdminRolesHandlers({
   deleteConfig: db.deleteConfig,
   deleteAclEntries: db.deleteAclEntries,
   deleteGrantsForPrincipal: db.deleteGrantsForPrincipal,
+  findGroupById: db.findGroupById,
+  listGroupsByRole: db.listGroupsByRole,
+  countGroupsByRole: db.countGroupsByRole,
+  addGroupToRole: db.addGroupToRole,
+  removeGroupFromRole: db.removeGroupFromRole,
 });
 
 router.use(requireJwtAuth, requireAdminAccess);
@@ -42,5 +47,8 @@ router.patch('/:name/permissions', requireManageRoles, handlers.updateRolePermis
 router.get('/:name/members', requireReadRoles, handlers.getRoleMembers);
 router.post('/:name/members', requireManageRoles, handlers.addRoleMember);
 router.delete('/:name/members/:userId', requireManageRoles, handlers.removeRoleMember);
+router.get('/:name/groups', requireReadRoles, handlers.getRoleGroups);
+router.post('/:name/groups', requireManageRoles, handlers.addRoleGroup);
+router.delete('/:name/groups/:groupId', requireManageRoles, handlers.removeRoleGroup);
 
 module.exports = router;

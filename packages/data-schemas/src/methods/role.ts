@@ -5,8 +5,8 @@ import {
   permissionsSchema,
   removeNullishValues,
 } from 'librechat-data-provider';
-import type { Model } from 'mongoose';
-import type { IRole, IUser } from '~/types';
+import type { Model, Types } from 'mongoose';
+import type { IRole, IUser, IGroup } from '~/types';
 import logger from '~/config/winston';
 
 const systemRoleValues = new Set<string>(Object.values(SystemRoles));
@@ -495,6 +495,88 @@ export function createRoleMethods(mongoose: typeof import('mongoose'), deps: Rol
     return await User.countDocuments({ role: roleName });
   }
 
+  async function listGroupsByRole(
+    roleName: string,
+    options?: { limit?: number; offset?: number },
+  ): Promise<IGroup[]> {
+    const Role = mongoose.models.Role as Model<IRole>;
+    const Group = mongoose.models.Group as Model<IGroup>;
+    const limit = options?.limit ?? 50;
+    const offset = options?.offset ?? 0;
+    const role = await Role.findOne({ name: roleName }).select('groupIds').lean();
+    if (!role?.groupIds?.length) {
+      return [];
+    }
+    return await Group.find({ _id: { $in: role.groupIds } })
+      .sort({ name: 1 })
+      .skip(offset)
+      .limit(limit)
+      .lean();
+  }
+
+  async function countGroupsByRole(roleName: string): Promise<number> {
+    const Role = mongoose.models.Role as Model<IRole>;
+    const role = await Role.findOne({ name: roleName }).select('groupIds').lean();
+    return role?.groupIds?.length ?? 0;
+  }
+
+  async function addGroupToRole(
+    roleName: string,
+    groupId: string | Types.ObjectId,
+  ): Promise<IRole | null> {
+    const cache = deps.getCache?.(CacheKeys.ROLES);
+    const Role = mongoose.models.Role as Model<IRole>;
+    const role = await Role.findOneAndUpdate(
+      { name: roleName },
+      { $addToSet: { groupIds: groupId } },
+      { new: true },
+    )
+      .select('-__v')
+      .lean();
+    if (cache) {
+      await cache.set(roleName, role);
+    }
+    return role as unknown as IRole | null;
+  }
+
+  async function removeGroupFromRole(
+    roleName: string,
+    groupId: string | Types.ObjectId,
+  ): Promise<IRole | null> {
+    const cache = deps.getCache?.(CacheKeys.ROLES);
+    const Role = mongoose.models.Role as Model<IRole>;
+    const role = await Role.findOneAndUpdate(
+      { name: roleName },
+      { $pull: { groupIds: groupId } },
+      { new: true },
+    )
+      .select('-__v')
+      .lean();
+    if (cache) {
+      await cache.set(roleName, role);
+    }
+    return role as unknown as IRole | null;
+  }
+
+  async function getGroupRoleNames(userId: string | Types.ObjectId): Promise<string[]> {
+    const User = mongoose.models.User as Model<IUser>;
+    const Group = mongoose.models.Group as Model<IGroup>;
+    const Role = mongoose.models.Role as Model<IRole>;
+    const user = await User.findById(userId, 'idOnTheSource').lean();
+    if (!user) {
+      return [];
+    }
+    const userIdOnTheSource =
+      (user as { idOnTheSource?: string }).idOnTheSource || userId.toString();
+    const groups = await Group.find({ memberIds: userIdOnTheSource }).select('_id').lean();
+    if (!groups.length) {
+      return [];
+    }
+    const groupIds = groups.map((g) => g._id);
+    const roles = await Role.find({ groupIds: { $in: groupIds } }).select('name').lean();
+    return roles.map((r) => r.name);
+  }
+
   return {
     listRoles,
     countRoles,
@@ -510,6 +592,11 @@ export function createRoleMethods(mongoose: typeof import('mongoose'), deps: Rol
     updateUsersRoleByIds,
     listUsersByRole,
     countUsersByRole,
+    listGroupsByRole,
+    countGroupsByRole,
+    addGroupToRole,
+    removeGroupFromRole,
+    getGroupRoleNames,
   };
 }
 

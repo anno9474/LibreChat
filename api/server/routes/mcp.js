@@ -56,12 +56,14 @@ const checkMCPUsePermissions = generateCheckAccess({
   permissionType: PermissionTypes.MCP_SERVERS,
   permissions: [Permissions.USE],
   getRoleByName: db.getRoleByName,
+  getGroupRoleNames: db.getGroupRoleNames,
 });
 
 const checkMCPCreate = generateCheckAccess({
   permissionType: PermissionTypes.MCP_SERVERS,
   permissions: [Permissions.USE, Permissions.CREATE],
   getRoleByName: db.getRoleByName,
+  getGroupRoleNames: db.getGroupRoleNames,
 });
 
 /**

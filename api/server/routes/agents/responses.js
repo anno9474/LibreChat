@@ -46,6 +46,7 @@ const checkRemoteAgentsFeature = generateCheckAccess({
   permissionType: PermissionTypes.REMOTE_AGENTS,
   permissions: [Permissions.USE],
   getRoleByName: db.getRoleByName,
+  getGroupRoleNames: db.getGroupRoleNames,
 });
 
 const checkAgentPermission = createCheckRemoteAgentAccess({

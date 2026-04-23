@@ -5,6 +5,7 @@ const {
   getAllUserMemories,
   toggleUserMemories,
   getRoleByName,
+  getGroupRoleNames,
   createMemory,
   deleteMemory,
   setMemory,
@@ -19,26 +20,31 @@ const checkMemoryRead = generateCheckAccess({
   permissionType: PermissionTypes.MEMORIES,
   permissions: [Permissions.USE, Permissions.READ],
   getRoleByName,
+  getGroupRoleNames,
 });
 const checkMemoryCreate = generateCheckAccess({
   permissionType: PermissionTypes.MEMORIES,
   permissions: [Permissions.USE, Permissions.CREATE],
   getRoleByName,
+  getGroupRoleNames,
 });
 const checkMemoryUpdate = generateCheckAccess({
   permissionType: PermissionTypes.MEMORIES,
   permissions: [Permissions.USE, Permissions.UPDATE],
   getRoleByName,
+  getGroupRoleNames,
 });
 const checkMemoryDelete = generateCheckAccess({
   permissionType: PermissionTypes.MEMORIES,
   permissions: [Permissions.USE, Permissions.UPDATE],
   getRoleByName,
+  getGroupRoleNames,
 });
 const checkMemoryOptOut = generateCheckAccess({
   permissionType: PermissionTypes.MEMORIES,
   permissions: [Permissions.USE, Permissions.OPT_OUT],
   getRoleByName,
+  getGroupRoleNames,
 });
 
 router.use(requireJwtAuth);

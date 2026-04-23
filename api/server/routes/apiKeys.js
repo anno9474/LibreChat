@@ -7,6 +7,7 @@ const {
   deleteAgentApiKey,
   listAgentApiKeys,
   getRoleByName,
+  getGroupRoleNames,
 } = require('~/models');
 const { requireJwtAuth } = require('~/server/middleware');
 
@@ -23,6 +24,7 @@ const checkRemoteAgentsUse = generateCheckAccess({
   permissionType: PermissionTypes.REMOTE_AGENTS,
   permissions: [Permissions.USE],
   getRoleByName,
+  getGroupRoleNames,
 });
 
 router.post('/', requireJwtAuth, checkRemoteAgentsUse, handlers.createApiKey);

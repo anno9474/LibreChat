@@ -9,7 +9,13 @@ const {
   ToolCallTypes,
   PermissionTypes,
 } = require('librechat-data-provider');
-const { getRoleByName, createToolCall, getToolCallsByConvo, getMessage } = require('~/models');
+const {
+  getRoleByName,
+  getGroupRoleNames,
+  createToolCall,
+  getToolCallsByConvo,
+  getMessage,
+} = require('~/models');
 const { processFileURL, uploadImageBuffer } = require('~/server/services/Files/process');
 const { processCodeOutput } = require('~/server/services/Files/Code/process');
 const { loadAuthValues } = require('~/server/services/Tools/credentials');
@@ -138,6 +144,7 @@ const callTool = async (req, res) => {
         permissionType: toolAccessPermType[toolId],
         permissions: [Permissions.USE],
         getRoleByName,
+        getGroupRoleNames,
       });
     }
     if (!hasAccess) {

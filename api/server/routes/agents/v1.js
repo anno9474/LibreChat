@@ -3,7 +3,7 @@ const { generateCheckAccess } = require('@librechat/api');
 const { PermissionTypes, Permissions, PermissionBits } = require('librechat-data-provider');
 const { requireJwtAuth, configMiddleware, canAccessAgentResource } = require('~/server/middleware');
 const v1 = require('~/server/controllers/agents/v1');
-const { getRoleByName } = require('~/models');
+const { getRoleByName, getGroupRoleNames } = require('~/models');
 const actions = require('./actions');
 const tools = require('./tools');
 
@@ -14,11 +14,13 @@ const checkAgentAccess = generateCheckAccess({
   permissionType: PermissionTypes.AGENTS,
   permissions: [Permissions.USE],
   getRoleByName,
+  getGroupRoleNames,
 });
 const checkAgentCreate = generateCheckAccess({
   permissionType: PermissionTypes.AGENTS,
   permissions: [Permissions.USE, Permissions.CREATE],
   getRoleByName,
+  getGroupRoleNames,
 });
 
 router.use(requireJwtAuth);

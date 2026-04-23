@@ -9,6 +9,7 @@ const {
   deleteConversationTag,
   getConversationTags,
   getRoleByName,
+  getGroupRoleNames,
 } = require('~/models');
 const { requireJwtAuth } = require('~/server/middleware');
 
@@ -18,6 +19,7 @@ const checkBookmarkAccess = generateCheckAccess({
   permissionType: PermissionTypes.BOOKMARKS,
   permissions: [Permissions.USE],
   getRoleByName,
+  getGroupRoleNames,
 });
 
 router.use(requireJwtAuth);

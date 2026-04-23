@@ -1,6 +1,6 @@
 import { Types } from 'mongoose';
 import { PrincipalType, SystemRoles } from 'librechat-data-provider';
-import type { IRole, IUser } from '@librechat/data-schemas';
+import type { IRole, IUser, IGroup } from '@librechat/data-schemas';
 import type { Response } from 'express';
 import type { ServerRequest } from '~/types/http';
 import type { AdminRolesDeps } from './roles';
@@ -76,8 +76,24 @@ function createDeps(overrides: Partial<AdminRolesDeps> = {}): AdminRolesDeps {
     deleteConfig: jest.fn().mockResolvedValue(null),
     deleteAclEntries: jest.fn().mockResolvedValue(undefined),
     deleteGrantsForPrincipal: jest.fn().mockResolvedValue(undefined),
+    findGroupById: jest.fn().mockResolvedValue(null),
+    listGroupsByRole: jest.fn().mockResolvedValue([]),
+    countGroupsByRole: jest.fn().mockResolvedValue(0),
+    addGroupToRole: jest.fn().mockResolvedValue(mockRole()),
+    removeGroupFromRole: jest.fn().mockResolvedValue(mockRole()),
     ...overrides,
   };
+}
+
+function mockGroup(overrides: Partial<IGroup> = {}): IGroup {
+  return {
+    _id: new Types.ObjectId(),
+    name: 'Test Group',
+    description: 'A test group',
+    source: 'local',
+    memberIds: [],
+    ...overrides,
+  } as unknown as IGroup;
 }
 
 describe('createAdminRolesHandlers', () => {
@@ -1559,6 +1575,324 @@ describe('createAdminRolesHandlers', () => {
 
       expect(status).toHaveBeenCalledWith(500);
       expect(json).toHaveBeenCalledWith({ error: 'Failed to remove role member' });
+    });
+  });
+
+  describe('getRoleGroups', () => {
+    it('returns 400 for invalid name param', async () => {
+      const deps = createDeps();
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({ params: { name: '' } });
+
+      await handlers.getRoleGroups(req, res);
+
+      expect(status).toHaveBeenCalledWith(400);
+      expect(json).toHaveBeenCalledWith({ error: 'name parameter is required' });
+    });
+
+    it('returns 404 when role does not exist', async () => {
+      const deps = createDeps({ getRoleByName: jest.fn().mockResolvedValue(null) });
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({ params: { name: 'editor' } });
+
+      await handlers.getRoleGroups(req, res);
+
+      expect(status).toHaveBeenCalledWith(404);
+      expect(json).toHaveBeenCalledWith({ error: 'Role not found' });
+    });
+
+    it('returns 200 with empty groups list', async () => {
+      const deps = createDeps({
+        getRoleByName: jest.fn().mockResolvedValue(mockRole()),
+        listGroupsByRole: jest.fn().mockResolvedValue([]),
+        countGroupsByRole: jest.fn().mockResolvedValue(0),
+      });
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({ params: { name: 'editor' } });
+
+      await handlers.getRoleGroups(req, res);
+
+      expect(status).toHaveBeenCalledWith(200);
+      expect(json).toHaveBeenCalledWith({ groups: [], total: 0, limit: 50, offset: 0 });
+    });
+
+    it('returns 200 with mapped groups including source field', async () => {
+      const group = mockGroup({ name: 'Entra Group', source: 'entra', memberIds: ['user-1'] });
+      const deps = createDeps({
+        getRoleByName: jest.fn().mockResolvedValue(mockRole()),
+        listGroupsByRole: jest.fn().mockResolvedValue([group]),
+        countGroupsByRole: jest.fn().mockResolvedValue(1),
+      });
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({ params: { name: 'editor' } });
+
+      await handlers.getRoleGroups(req, res);
+
+      expect(status).toHaveBeenCalledWith(200);
+      const { groups, total } = (json.mock.calls[0][0] as {
+        groups: { _id: string; name: string; source: string; memberIds: string[] }[];
+        total: number;
+      });
+      expect(total).toBe(1);
+      expect(groups[0]._id).toBe(group._id.toString());
+      expect(groups[0].name).toBe('Entra Group');
+      expect(groups[0].source).toBe('entra');
+      expect(groups[0].memberIds).toEqual(['user-1']);
+    });
+
+    it('passes pagination to listGroupsByRole', async () => {
+      const deps = createDeps({
+        getRoleByName: jest.fn().mockResolvedValue(mockRole()),
+        listGroupsByRole: jest.fn().mockResolvedValue([]),
+        countGroupsByRole: jest.fn().mockResolvedValue(5),
+      });
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res } = createReqRes({
+        params: { name: 'editor' },
+        query: { limit: '10', offset: '20' },
+      });
+
+      await handlers.getRoleGroups(req, res);
+
+      expect(deps.listGroupsByRole).toHaveBeenCalledWith('editor', { limit: 10, offset: 20 });
+    });
+
+    it('returns 500 on unexpected error', async () => {
+      const deps = createDeps({
+        getRoleByName: jest.fn().mockResolvedValue(mockRole()),
+        listGroupsByRole: jest.fn().mockRejectedValue(new Error('db error')),
+      });
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({ params: { name: 'editor' } });
+
+      await handlers.getRoleGroups(req, res);
+
+      expect(status).toHaveBeenCalledWith(500);
+      expect(json).toHaveBeenCalledWith({ error: 'Failed to get role groups' });
+    });
+  });
+
+  describe('addRoleGroup', () => {
+    const validGroupId = new Types.ObjectId().toString();
+
+    it('returns 400 for invalid name param', async () => {
+      const deps = createDeps();
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({
+        params: { name: '' },
+        body: { groupId: validGroupId },
+      });
+
+      await handlers.addRoleGroup(req, res);
+
+      expect(status).toHaveBeenCalledWith(400);
+      expect(json).toHaveBeenCalledWith({ error: 'name parameter is required' });
+    });
+
+    it('returns 400 when groupId is missing', async () => {
+      const deps = createDeps();
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({ params: { name: 'editor' }, body: {} });
+
+      await handlers.addRoleGroup(req, res);
+
+      expect(status).toHaveBeenCalledWith(400);
+      expect(json).toHaveBeenCalledWith({ error: 'groupId is required' });
+    });
+
+    it('returns 400 for invalid groupId format', async () => {
+      const deps = createDeps();
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({
+        params: { name: 'editor' },
+        body: { groupId: 'not-an-objectid' },
+      });
+
+      await handlers.addRoleGroup(req, res);
+
+      expect(status).toHaveBeenCalledWith(400);
+      expect(json).toHaveBeenCalledWith({ error: 'Invalid group ID format' });
+    });
+
+    it('returns 404 when role does not exist', async () => {
+      const deps = createDeps({ getRoleByName: jest.fn().mockResolvedValue(null) });
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({
+        params: { name: 'editor' },
+        body: { groupId: validGroupId },
+      });
+
+      await handlers.addRoleGroup(req, res);
+
+      expect(status).toHaveBeenCalledWith(404);
+      expect(json).toHaveBeenCalledWith({ error: 'Role not found' });
+    });
+
+    it('returns 404 when group does not exist', async () => {
+      const deps = createDeps({
+        getRoleByName: jest.fn().mockResolvedValue(mockRole()),
+        findGroupById: jest.fn().mockResolvedValue(null),
+      });
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({
+        params: { name: 'editor' },
+        body: { groupId: validGroupId },
+      });
+
+      await handlers.addRoleGroup(req, res);
+
+      expect(status).toHaveBeenCalledWith(404);
+      expect(json).toHaveBeenCalledWith({ error: 'Group not found' });
+    });
+
+    it('returns 200 idempotently when group already assigned', async () => {
+      const groupId = new Types.ObjectId(validGroupId);
+      const role = mockRole({ groupIds: [groupId] });
+      const deps = createDeps({
+        getRoleByName: jest.fn().mockResolvedValue(role),
+        findGroupById: jest.fn().mockResolvedValue(mockGroup({ _id: groupId })),
+      });
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({
+        params: { name: 'editor' },
+        body: { groupId: validGroupId },
+      });
+
+      await handlers.addRoleGroup(req, res);
+
+      expect(deps.addGroupToRole).not.toHaveBeenCalled();
+      expect(status).toHaveBeenCalledWith(200);
+      expect(json).toHaveBeenCalledWith({ success: true });
+    });
+
+    it('returns 200 on successful assignment', async () => {
+      const deps = createDeps({
+        getRoleByName: jest.fn().mockResolvedValue(mockRole({ groupIds: [] })),
+        findGroupById: jest.fn().mockResolvedValue(mockGroup()),
+        addGroupToRole: jest.fn().mockResolvedValue(mockRole()),
+      });
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({
+        params: { name: 'editor' },
+        body: { groupId: validGroupId },
+      });
+
+      await handlers.addRoleGroup(req, res);
+
+      expect(deps.addGroupToRole).toHaveBeenCalledWith('editor', validGroupId);
+      expect(status).toHaveBeenCalledWith(200);
+      expect(json).toHaveBeenCalledWith({ success: true });
+    });
+
+    it('returns 500 on unexpected error', async () => {
+      const deps = createDeps({
+        getRoleByName: jest.fn().mockRejectedValue(new Error('db error')),
+      });
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({
+        params: { name: 'editor' },
+        body: { groupId: validGroupId },
+      });
+
+      await handlers.addRoleGroup(req, res);
+
+      expect(status).toHaveBeenCalledWith(500);
+      expect(json).toHaveBeenCalledWith({ error: 'Failed to add group to role' });
+    });
+  });
+
+  describe('removeRoleGroup', () => {
+    const validGroupId = new Types.ObjectId().toString();
+
+    it('returns 400 for invalid name param', async () => {
+      const deps = createDeps();
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({
+        params: { name: '', groupId: validGroupId },
+      });
+
+      await handlers.removeRoleGroup(req, res);
+
+      expect(status).toHaveBeenCalledWith(400);
+      expect(json).toHaveBeenCalledWith({ error: 'name parameter is required' });
+    });
+
+    it('returns 400 for invalid groupId format', async () => {
+      const deps = createDeps();
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({
+        params: { name: 'editor', groupId: 'not-an-objectid' },
+      });
+
+      await handlers.removeRoleGroup(req, res);
+
+      expect(status).toHaveBeenCalledWith(400);
+      expect(json).toHaveBeenCalledWith({ error: 'Invalid group ID format' });
+    });
+
+    it('returns 404 when role does not exist', async () => {
+      const deps = createDeps({ getRoleByName: jest.fn().mockResolvedValue(null) });
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({
+        params: { name: 'editor', groupId: validGroupId },
+      });
+
+      await handlers.removeRoleGroup(req, res);
+
+      expect(status).toHaveBeenCalledWith(404);
+      expect(json).toHaveBeenCalledWith({ error: 'Role not found' });
+    });
+
+    it('returns 404 when group is not assigned to role', async () => {
+      const deps = createDeps({
+        getRoleByName: jest.fn().mockResolvedValue(mockRole({ groupIds: [] })),
+      });
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({
+        params: { name: 'editor', groupId: validGroupId },
+      });
+
+      await handlers.removeRoleGroup(req, res);
+
+      expect(status).toHaveBeenCalledWith(404);
+      expect(json).toHaveBeenCalledWith({ error: 'Group not assigned to this role' });
+    });
+
+    it('returns 200 on successful removal', async () => {
+      const groupId = new Types.ObjectId(validGroupId);
+      const role = mockRole({ groupIds: [groupId] });
+      const deps = createDeps({
+        getRoleByName: jest.fn().mockResolvedValue(role),
+        removeGroupFromRole: jest.fn().mockResolvedValue(mockRole({ groupIds: [] })),
+      });
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({
+        params: { name: 'editor', groupId: validGroupId },
+      });
+
+      await handlers.removeRoleGroup(req, res);
+
+      expect(deps.removeGroupFromRole).toHaveBeenCalledWith('editor', validGroupId);
+      expect(status).toHaveBeenCalledWith(200);
+      expect(json).toHaveBeenCalledWith({ success: true });
+    });
+
+    it('returns 500 on unexpected error', async () => {
+      const groupId = new Types.ObjectId(validGroupId);
+      const role = mockRole({ groupIds: [groupId] });
+      const deps = createDeps({
+        getRoleByName: jest.fn().mockResolvedValue(role),
+        removeGroupFromRole: jest.fn().mockRejectedValue(new Error('db error')),
+      });
+      const handlers = createAdminRolesHandlers(deps);
+      const { req, res, status, json } = createReqRes({
+        params: { name: 'editor', groupId: validGroupId },
+      });
+
+      await handlers.removeRoleGroup(req, res);
+
+      expect(status).toHaveBeenCalledWith(500);
+      expect(json).toHaveBeenCalledWith({ error: 'Failed to remove group from role' });
     });
   });
 });

@@ -29,6 +29,7 @@ const {
   createPromptGroup,
   getPromptGroup,
   getRoleByName,
+  getGroupRoleNames,
   deletePrompt,
   getPrompts,
   savePrompt,
@@ -54,11 +55,13 @@ const checkPromptAccess = generateCheckAccess({
   permissionType: PermissionTypes.PROMPTS,
   permissions: [Permissions.USE],
   getRoleByName,
+  getGroupRoleNames,
 });
 const checkPromptCreate = generateCheckAccess({
   permissionType: PermissionTypes.PROMPTS,
   permissions: [Permissions.USE, Permissions.CREATE],
   getRoleByName,
+  getGroupRoleNames,
 });
 
 router.use(requireJwtAuth);
@@ -68,6 +71,7 @@ const checkGlobalPromptShare = generateCheckAccess({
   permissionType: PermissionTypes.PROMPTS,
   permissions: [Permissions.USE, Permissions.CREATE],
   getRoleByName,
+  getGroupRoleNames,
 });
 
 /**

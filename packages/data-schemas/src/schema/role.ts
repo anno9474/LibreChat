@@ -77,6 +77,7 @@ const roleSchema: Schema<IRole> = new Schema({
   permissions: {
     type: rolePermissionsSchema,
   },
+  groupIds: [{ type: Schema.Types.ObjectId, ref: 'Group' }],
   tenantId: {
     type: String,
     index: true,

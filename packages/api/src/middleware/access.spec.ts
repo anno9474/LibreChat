@@ -536,4 +536,127 @@ describe('access middleware', () => {
       expect(result).toBe(true);
     });
   });
+
+  describe('group-inherited permission resolution', () => {
+    it('returns true when user has no direct role but inherits permission via group', async () => {
+      const userWithoutRole = { _id: 'user-id', role: 'norole' } as unknown as IUser;
+      const noRole = null;
+      const groupRole = {
+        permissions: {
+          [PermissionTypes.PROMPTS]: { [Permissions.USE]: true },
+        },
+      } as unknown as IRole;
+
+      const getRoleByName = jest.fn().mockImplementation((name: string) => {
+        if (name === 'norole') return Promise.resolve(noRole);
+        if (name === 'group-role') return Promise.resolve(groupRole);
+        return Promise.resolve(null);
+      });
+      const getGroupRoleNames = jest.fn().mockResolvedValue(['group-role']);
+
+      const result = await checkAccess({
+        user: userWithoutRole,
+        permissionType: PermissionTypes.PROMPTS,
+        permissions: [Permissions.USE],
+        getRoleByName,
+        getGroupRoleNames,
+      });
+
+      expect(result).toBe(true);
+      expect(getGroupRoleNames).toHaveBeenCalledWith('user-id');
+    });
+
+    it('returns true when direct role is restrictive but group role grants permission (union)', async () => {
+      const user = { _id: 'user-id', role: 'restricted' } as unknown as IUser;
+      const restrictedRole = {
+        permissions: {
+          [PermissionTypes.PROMPTS]: { [Permissions.USE]: false },
+        },
+      } as unknown as IRole;
+      const groupRole = {
+        permissions: {
+          [PermissionTypes.PROMPTS]: { [Permissions.USE]: true },
+        },
+      } as unknown as IRole;
+
+      const getRoleByName = jest.fn().mockImplementation((name: string) => {
+        if (name === 'restricted') return Promise.resolve(restrictedRole);
+        if (name === 'permissive-group-role') return Promise.resolve(groupRole);
+        return Promise.resolve(null);
+      });
+      const getGroupRoleNames = jest.fn().mockResolvedValue(['permissive-group-role']);
+
+      const result = await checkAccess({
+        user,
+        permissionType: PermissionTypes.PROMPTS,
+        permissions: [Permissions.USE],
+        getRoleByName,
+        getGroupRoleNames,
+      });
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false when neither direct nor group roles grant permission', async () => {
+      const user = { _id: 'user-id', role: 'restricted' } as unknown as IUser;
+      const restrictedRole = {
+        permissions: {
+          [PermissionTypes.PROMPTS]: { [Permissions.USE]: false },
+        },
+      } as unknown as IRole;
+      const groupRole = {
+        permissions: {
+          [PermissionTypes.PROMPTS]: { [Permissions.USE]: false },
+        },
+      } as unknown as IRole;
+
+      const getRoleByName = jest.fn().mockImplementation((name: string) => {
+        if (name === 'restricted') return Promise.resolve(restrictedRole);
+        if (name === 'also-restricted') return Promise.resolve(groupRole);
+        return Promise.resolve(null);
+      });
+      const getGroupRoleNames = jest.fn().mockResolvedValue(['also-restricted']);
+
+      const result = await checkAccess({
+        user,
+        permissionType: PermissionTypes.PROMPTS,
+        permissions: [Permissions.USE],
+        getRoleByName,
+        getGroupRoleNames,
+      });
+
+      expect(result).toBe(false);
+    });
+
+    it('falls back to false without calling getGroupRoleNames when not provided', async () => {
+      const user = { _id: 'user-id', role: 'norole' } as unknown as IUser;
+      const getRoleByName = jest.fn().mockResolvedValue(null);
+
+      const result = await checkAccess({
+        user,
+        permissionType: PermissionTypes.PROMPTS,
+        permissions: [Permissions.USE],
+        getRoleByName,
+      });
+
+      expect(result).toBe(false);
+    });
+
+    it('returns false when user has no groups', async () => {
+      const user = { _id: 'user-id', role: 'norole' } as unknown as IUser;
+      const getRoleByName = jest.fn().mockResolvedValue(null);
+      const getGroupRoleNames = jest.fn().mockResolvedValue([]);
+
+      const result = await checkAccess({
+        user,
+        permissionType: PermissionTypes.PROMPTS,
+        permissions: [Permissions.USE],
+        getRoleByName,
+        getGroupRoleNames,
+      });
+
+      expect(result).toBe(false);
+      expect(getRoleByName).toHaveBeenCalledTimes(1);
+    });
+  });
 });
