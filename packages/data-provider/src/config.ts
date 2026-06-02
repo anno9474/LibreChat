@@ -1379,7 +1379,7 @@ const termsOfServiceSchema = z.object({
 export type TTermsOfService = z.infer<typeof termsOfServiceSchema>;
 
 // Schema for localized string (either simple string or language-keyed object)
-const localizedStringSchema = z.union([z.string(), z.record(z.string())]);
+export const localizedStringSchema = z.union([z.string(), z.record(z.string())]);
 export type LocalizedString = z.infer<typeof localizedStringSchema>;
 
 const mcpServersSchema = z

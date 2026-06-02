@@ -2,7 +2,7 @@ import React from 'react';
 import { VisuallyHidden } from '@ariakit/react';
 import { CheckCircle2, Pin, PinOff } from 'lucide-react';
 import type { TModelSpec } from 'librechat-data-provider';
-import { useFavorites, useLocalize, useIsActiveItem } from '~/hooks';
+import { useFavorites, useLocalize, useIsActiveItem, useLocalizedConfig } from '~/hooks';
 import { useModelSelectorContext } from '../ModelSelectorContext';
 import { CustomMenuItem as MenuItem } from '../CustomMenu';
 import SpecDescription from './SpecDescription';
@@ -19,6 +19,7 @@ interface ModelSpecItemProps {
 
 export function ModelSpecItem({ spec, isSelected, posInSet, setSize }: ModelSpecItemProps) {
   const localize = useLocalize();
+  const getLocalizedValue = useLocalizedConfig();
   const { handleSelectSpec, endpointsConfig } = useModelSelectorContext();
   const { isFavoriteSpec, toggleFavoriteSpec } = useFavorites();
   const { showIconInMenu = true } = spec;
@@ -26,6 +27,10 @@ export function ModelSpecItem({ spec, isSelected, posInSet, setSize }: ModelSpec
   const { ref: itemRef, isActive } = useIsActiveItem<HTMLDivElement>();
 
   const isFavorite = isFavoriteSpec(spec.name);
+  const resolvedLabel = getLocalizedValue(spec.label, spec.name);
+  const resolvedDescription = spec.description != null
+    ? getLocalizedValue(spec.description, '')
+    : undefined;
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -44,7 +49,7 @@ export function ModelSpecItem({ spec, isSelected, posInSet, setSize }: ModelSpec
       <div
         className={cn(
           'flex w-full min-w-0 gap-2 px-1 py-1',
-          spec.description ? 'items-start' : 'items-center',
+          resolvedDescription ? 'items-start' : 'items-center',
         )}
       >
         {showIconInMenu && (
@@ -53,8 +58,8 @@ export function ModelSpecItem({ spec, isSelected, posInSet, setSize }: ModelSpec
           </div>
         )}
         <div className="flex min-w-0 flex-col gap-1">
-          <span className="truncate text-left">{spec.label}</span>
-          <SpecDescription description={spec.description} />
+          <span className="truncate text-left">{resolvedLabel}</span>
+          <SpecDescription description={resolvedDescription} />
         </div>
       </div>
       <button
