@@ -12,7 +12,7 @@ import VirtualizedModelList from './VirtualizedModelList';
 import { shouldRenderEndpointOption } from '../utils';
 import { cn, getSpecAgentAvatarURL } from '~/utils';
 import SpecDescription from './SpecDescription';
-import { useFavorites } from '~/hooks';
+import { useFavorites, useLocalizedConfig } from '~/hooks';
 import SpecIcon from './SpecIcon';
 
 type SearchModel = { name: string; isGlobal?: boolean };
@@ -173,6 +173,7 @@ interface SearchResultsProps {
 }
 
 export function SearchResults({ results, localize, searchValue }: SearchResultsProps) {
+  const getLocalizedValue = useLocalizedConfig();
   const { selectedValues, handleSelectSpec, handleSelectEndpoint, endpointsConfig, agentsMap } =
     useModelSelectorContext();
   const { modelSpec: selectedSpec, endpoint: selectedEndpoint } = selectedValues;
@@ -217,6 +218,9 @@ export function SearchResults({ results, localize, searchValue }: SearchResultsP
 
         if (result.kind === 'spec') {
           const { spec } = result;
+          const resolvedLabel = getLocalizedValue(spec.label, spec.name);
+          const resolvedDescription =
+            spec.description != null ? getLocalizedValue(spec.description, '') : undefined;
           return (
             <MenuItem
               key={spec.name}
@@ -226,13 +230,13 @@ export function SearchResults({ results, localize, searchValue }: SearchResultsP
               aria-setsize={listboxSetSize}
               className={cn(
                 'flex w-full cursor-pointer justify-between rounded-lg px-2 text-sm',
-                spec.description ? 'items-start' : 'items-center',
+                resolvedDescription ? 'items-start' : 'items-center',
               )}
             >
               <div
                 className={cn(
                   'flex w-full min-w-0 gap-2 px-1 py-1',
-                  spec.description ? 'items-start' : 'items-center',
+                  resolvedDescription ? 'items-start' : 'items-center',
                 )}
               >
                 {(spec.showIconInMenu ?? true) && (
@@ -245,8 +249,8 @@ export function SearchResults({ results, localize, searchValue }: SearchResultsP
                   </div>
                 )}
                 <div className="flex min-w-0 flex-col gap-1">
-                  <span className="truncate text-left">{spec.label}</span>
-                  <SpecDescription description={spec.description} />
+                  <span className="truncate text-left">{resolvedLabel}</span>
+                  <SpecDescription description={resolvedDescription} />
                 </div>
               </div>
               {selectedSpec === spec.name && (
@@ -254,7 +258,7 @@ export function SearchResults({ results, localize, searchValue }: SearchResultsP
                   <CheckCircle2
                     className={cn(
                       'size-4 shrink-0 text-text-primary',
-                      spec.description ? 'mt-1' : '',
+                      resolvedDescription ? 'mt-1' : '',
                     )}
                     aria-hidden="true"
                   />
