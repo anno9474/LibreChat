@@ -7,10 +7,10 @@ import {
   eModelEndpointSchema,
   AuthType,
   authTypeSchema,
+  localizedStringSchema,
 } from './schemas';
 import { MAX_SUBAGENTS } from './limits';
-import { localizedStringSchema } from './config';
-import type { LocalizedString } from './config';
+import type { LocalizedString } from './schemas';
 
 export type TModelSpec = {
   name: string;
