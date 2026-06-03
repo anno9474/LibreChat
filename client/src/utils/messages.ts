@@ -21,6 +21,16 @@ import type { LocalizeFunction, TMessageProps } from '~/common';
 export const TEXT_KEY_DIVIDER = '|||';
 export const STREAM_START_FAILED_METADATA_KEY = 'streamStartFailed';
 
+function resolveLabel(value: string | Record<string, string> | undefined): string | undefined {
+  if (value == null) {
+    return undefined;
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  return value['en'] ?? Object.values(value)[0];
+}
+
 type SiblingIndexLookup = (parentMessageId: string | null | undefined) => number;
 
 export type BranchSiblingIndex = {
@@ -787,7 +797,7 @@ export const createDualMessageContent = (
         : undefined;
     const primarySender = getEphemeralSender({
       modelLabel: primaryConvo.modelLabel,
-      specLabel: primarySpec?.label,
+      specLabel: resolveLabel(primarySpec?.label),
       modelDisplayLabel: primaryEndpoint
         ? endpointsConfig?.[primaryEndpoint]?.modelDisplayLabel
         : undefined,
@@ -827,7 +837,7 @@ export const createDualMessageContent = (
         : undefined;
     const addedSender = getEphemeralSender({
       modelLabel: addedConvo.modelLabel,
-      specLabel: addedSpec?.label,
+      specLabel: resolveLabel(addedSpec?.label),
       modelDisplayLabel: addedEndpoint
         ? endpointsConfig?.[addedEndpoint]?.modelDisplayLabel
         : undefined,

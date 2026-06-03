@@ -14,7 +14,7 @@ import { getSpecAgentAvatarURL } from '~/utils';
 
 export function filterItems<
   T extends {
-    label: string;
+    label: string | Record<string, string>;
     name?: string;
     value?: string;
     hasModels?: boolean;
@@ -39,8 +39,11 @@ export function filterItems<
       return false;
     }
 
+    const labelStr = typeof item.label === 'string'
+      ? item.label
+      : Object.values(item.label).join(' ');
     const itemMatches =
-      item.label.toLowerCase().includes(searchTermLower) ||
+      labelStr.toLowerCase().includes(searchTermLower) ||
       (item.name && item.name.toLowerCase().includes(searchTermLower)) ||
       (item.value && item.value.toLowerCase().includes(searchTermLower)) ||
       item.searchAliases?.some((alias) => alias.toLowerCase().includes(searchTermLower)) ||
@@ -189,12 +192,14 @@ export function getSelectedIcon({
 
 export const getDisplayValue = ({
   localize,
+  getLocalizedValue,
   mappedEndpoints,
   selectedValues,
   modelSpecs,
   agentsMap,
 }: {
   localize: ReturnType<typeof useLocalize>;
+  getLocalizedValue: (value: string | Record<string, string>, fallback: string) => string;
   selectedValues: SelectedValues;
   mappedEndpoints: Endpoint[];
   modelSpecs: TModelSpec[];
@@ -202,7 +207,7 @@ export const getDisplayValue = ({
 }) => {
   if (selectedValues.modelSpec) {
     const spec = modelSpecs.find((s) => s.name === selectedValues.modelSpec);
-    return spec?.label || spec?.name || localize('com_ui_select_model');
+    return (spec && getLocalizedValue(spec.label, spec.name || '')) || localize('com_ui_select_model');
   }
 
   if (selectedValues.model && selectedValues.endpoint) {

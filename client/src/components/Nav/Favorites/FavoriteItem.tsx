@@ -5,7 +5,7 @@ import type { FavoriteModel } from '~/store/favorites';
 import SpecIcon from '~/components/Chat/Menus/Endpoints/components/SpecIcon';
 import UnpinButton from '~/components/Conversations/UnpinButton';
 import MinimalIcon from '~/components/Endpoints/MinimalIcon';
-import { useFavorites, useLocalize } from '~/hooks';
+import { useFavorites, useLocalize, useLocalizedConfig } from '~/hooks';
 import { renderAgentAvatar } from '~/utils';
 
 type Kwargs = {
@@ -49,6 +49,7 @@ type FavoriteItemProps = AgentFavoriteProps | ModelFavoriteProps | SpecFavoriteP
 export default function FavoriteItem(props: FavoriteItemProps) {
   const { onRemoveFocus, keyShortcuts } = props;
   const localize = useLocalize();
+  const getLocalizedValue = useLocalizedConfig();
   const { removeFavoriteAgent, removeFavoriteModel, removeFavoriteSpec } = useFavorites();
 
   const handleSelect = () => {
@@ -123,7 +124,7 @@ export default function FavoriteItem(props: FavoriteItemProps) {
     name = props.item.name ?? '';
     typeLabel = localize('com_ui_agent');
   } else if (props.type === 'spec') {
-    name = props.item.label;
+    name = getLocalizedValue(props.item.label, props.item.name ?? '');
     typeLabel = localize('com_ui_model_spec');
   } else {
     name = props.item.model;
