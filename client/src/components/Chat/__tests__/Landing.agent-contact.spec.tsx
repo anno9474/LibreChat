@@ -40,6 +40,10 @@ jest.mock('~/data-provider', () => ({
 jest.mock('~/hooks', () => ({
   useAuthContext: () => ({ user: undefined }),
   useGreeting: () => 'Welcome',
+  useLocalizedConfig:
+    () =>
+    (value: string | Record<string, string> | undefined, fallback: string) =>
+      typeof value === 'string' ? value : (value?.['en'] ?? fallback),
   useLocalize: () => (key: string) => {
     const translations: Record<string, string> = {
       com_agents_contact: 'Contact',

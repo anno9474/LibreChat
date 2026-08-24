@@ -5,11 +5,13 @@ import {
   ContentTypes,
   isEphemeralAgentId,
   appendAgentIdSuffix,
+  resolveLocalizedString,
   encodeEphemeralAgentId,
 } from 'librechat-data-provider';
 import type {
   TMessage,
   TConversation,
+  LocalizedString,
   TEndpointsConfig,
   TMessageContentParts,
 } from 'librechat-data-provider';
@@ -18,16 +20,6 @@ import type { LocalizeFunction, TMessageProps } from '~/common';
 
 export const TEXT_KEY_DIVIDER = '|||';
 export const STREAM_START_FAILED_METADATA_KEY = 'streamStartFailed';
-
-function resolveLabel(value: string | Record<string, string> | undefined): string | undefined {
-  if (value == null) {
-    return undefined;
-  }
-  if (typeof value === 'string') {
-    return value;
-  }
-  return value['en'] ?? Object.values(value)[0];
-}
 
 type SiblingIndexLookup = (parentMessageId: string | null | undefined) => number;
 
@@ -481,7 +473,7 @@ export const createDualMessageContent = (
   primaryConvo: TConversation,
   addedConvo: TConversation,
   endpointsConfig?: TEndpointsConfig,
-  modelSpecs?: { name: string; label?: string }[],
+  modelSpecs?: { name: string; label?: LocalizedString }[],
 ): TMessageContentParts[] => {
   // For real agents (agent_id starts with "agent_"), use agent_id directly
   // Otherwise create ephemeral ID from endpoint/model
@@ -500,7 +492,7 @@ export const createDualMessageContent = (
     // then modelDisplayLabel from endpoint config, otherwise empty string to show model name
     const primarySender =
       primaryConvo.modelLabel ??
-      resolveLabel(primarySpec?.label) ??
+      resolveLocalizedString(primarySpec?.label) ??
       (primaryEndpoint ? endpointsConfig?.[primaryEndpoint]?.modelDisplayLabel : undefined) ??
       '';
     primaryAgentId = encodeEphemeralAgentId({
@@ -540,7 +532,7 @@ export const createDualMessageContent = (
     // then modelDisplayLabel from endpoint config, otherwise empty string to show model name
     const addedSender =
       addedConvo.modelLabel ??
-      resolveLabel(addedSpec?.label) ??
+      resolveLocalizedString(addedSpec?.label) ??
       (addedEndpoint ? endpointsConfig?.[addedEndpoint]?.modelDisplayLabel : undefined) ??
       '';
     addedAgentId = encodeEphemeralAgentId({

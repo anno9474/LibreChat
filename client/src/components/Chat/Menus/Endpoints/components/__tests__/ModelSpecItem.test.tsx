@@ -33,6 +33,10 @@ jest.mock('../SpecIcon', () => ({
 
 jest.mock('~/hooks', () => ({
   useLocalize: () => (key: string) => key,
+  useLocalizedConfig:
+    () =>
+    (value: string | Record<string, string> | undefined, fallback: string) =>
+      typeof value === 'string' ? value : (value?.['en'] ?? fallback),
   useFavorites: () => ({
     isFavoriteSpec: () => mockIsFavoriteSpec,
     toggleFavoriteSpec: mockToggleFavoriteSpec,

@@ -12,7 +12,7 @@ import {
 } from '~/utils';
 import { useChatContext, useAgentsMapContext, useAssistantsMapContext } from '~/Providers';
 import { useGetEndpointsQuery, useGetStartupConfig } from '~/data-provider';
-import { useLocalize, useAuthContext, useGreeting } from '~/hooks';
+import { useLocalize, useAuthContext, useGreeting, useLocalizedConfig } from '~/hooks';
 import AgentContact from '~/components/Agents/AgentContact';
 import ConvoIcon from '~/components/Endpoints/ConvoIcon';
 
@@ -48,6 +48,7 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
   const { data: endpointsConfig } = useGetEndpointsQuery();
   const { user } = useAuthContext();
   const localize = useLocalize();
+  const getLocalizedValue = useLocalizedConfig();
 
   const [textHasMultipleLines, setTextHasMultipleLines] = useState(false);
   const [lineCount, setLineCount] = useState(1);
@@ -79,8 +80,12 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
     [conversation?.spec, startupConfig],
   );
 
-  const brandedSpecLabel = modelSpec?.showOnLanding ? modelSpec.label : '';
-  const brandedSpecDescription = (modelSpec?.showOnLanding && modelSpec.description) || '';
+  const brandedSpecLabel = modelSpec?.showOnLanding
+    ? getLocalizedValue(modelSpec.label, modelSpec.name)
+    : '';
+  const brandedSpecDescription = modelSpec?.showOnLanding
+    ? getLocalizedValue(modelSpec.description, '')
+    : '';
   const name = entity?.name ?? brandedSpecLabel;
   const description =
     (entity?.description || brandedSpecDescription || conversation?.greeting) ?? '';

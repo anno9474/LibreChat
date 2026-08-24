@@ -10,6 +10,18 @@ export const isUUID = z.string().uuid();
 export const localizedStringSchema = z.union([z.string(), z.record(z.string())]);
 export type LocalizedString = z.infer<typeof localizedStringSchema>;
 
+/** Locale-independent resolution: prefers English, then the first available translation. Callers
+ * needing the active user's locale should resolve per-locale instead (see `useLocalizedConfig`). */
+export function resolveLocalizedString(value: LocalizedString | undefined): string | undefined {
+  if (value == null) {
+    return undefined;
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  return value['en'] ?? Object.values(value)[0];
+}
+
 export enum AuthType {
   OVERRIDE_AUTH = 'override_auth',
   USER_PROVIDED = 'user_provided',
