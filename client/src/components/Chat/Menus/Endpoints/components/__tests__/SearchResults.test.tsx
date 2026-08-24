@@ -11,6 +11,13 @@ const mockToggleFavoriteAgent = jest.fn();
 const mockToggleFavoriteModel = jest.fn();
 let mockSelectedValues: SelectedValues;
 
+jest.mock('~/hooks', () => ({
+  useLocalizedConfig:
+    () =>
+    (value: string | Record<string, string> | undefined, fallback: string) =>
+      typeof value === 'string' ? value : (value?.['en'] ?? fallback),
+}));
+
 jest.mock('~/components/Chat/Menus/Endpoints/ModelSelectorContext', () => ({
   useModelSelectorContext: () => ({
     selectedValues: mockSelectedValues,

@@ -8,7 +8,7 @@ import { useChatContext, useAgentsMapContext, useAssistantsMapContext } from '~/
 import Description, { isHtmlDescription } from '~/components/ui/Description';
 import { useGetEndpointsQuery, useGetStartupConfig } from '~/data-provider';
 import { getIconEndpoint, getEntity, getModelSpec } from '~/utils';
-import { useLocalize, useAuthContext, useGreeting } from '~/hooks';
+import { useLocalize, useAuthContext, useGreeting, useLocalizedConfig } from '~/hooks';
 import AgentContact from '~/components/Agents/AgentContact';
 import ConvoIcon from '~/components/Endpoints/ConvoIcon';
 import temporaryStore from '~/store/temporary';
@@ -45,6 +45,7 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
   const { data: endpointsConfig } = useGetEndpointsQuery();
   const { user } = useAuthContext();
   const localize = useLocalize();
+  const getLocalizedValue = useLocalizedConfig();
   const isTemporary = useRecoilValue(temporaryStore.isTemporary);
 
   const [textHasMultipleLines, setTextHasMultipleLines] = useState(false);
@@ -77,8 +78,12 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
     [conversation?.spec, startupConfig],
   );
 
-  const brandedSpecLabel = modelSpec?.showOnLanding ? modelSpec.label : '';
-  const brandedSpecDescription = (modelSpec?.showOnLanding && modelSpec.description) || '';
+  const brandedSpecLabel = modelSpec?.showOnLanding
+    ? getLocalizedValue(modelSpec.label, modelSpec.name)
+    : '';
+  const brandedSpecDescription = modelSpec?.showOnLanding
+    ? getLocalizedValue(modelSpec.description, '')
+    : '';
   const name = isTemporary ? '' : (entity?.name ?? brandedSpecLabel);
   const description = isTemporary
     ? localize('com_ui_temporary_description')

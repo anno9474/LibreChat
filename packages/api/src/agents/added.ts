@@ -6,6 +6,7 @@ import {
   isEphemeralAgentId,
   getEphemeralSender,
   appendAgentIdSuffix,
+  resolveLocalizedString,
   encodeEphemeralAgentId,
 } from 'librechat-data-provider';
 import type { Agent, AgentToolOptions, TConversation, TModelSpec } from 'librechat-data-provider';
@@ -162,7 +163,7 @@ export async function loadAddedAgent(
     const modelSpec = spec != null && spec !== '' ? modelSpecs?.find((s) => s.name === spec) : null;
     const sender = getEphemeralSender({
       modelLabel: rest.modelLabel,
-      specLabel: modelSpec?.label,
+      specLabel: resolveLocalizedString(modelSpec?.label),
       modelDisplayLabel: endpointConfig?.modelDisplayLabel as string | undefined,
     });
     const ephemeralId = encodeEphemeralAgentId({ endpoint, model, sender, index: 1 });
@@ -292,7 +293,7 @@ export async function loadAddedAgent(
 
   const sender = getEphemeralSender({
     modelLabel: rest.modelLabel,
-    specLabel: modelSpec?.label,
+    specLabel: resolveLocalizedString(modelSpec?.label),
     modelDisplayLabel: endpointConfig?.modelDisplayLabel as string | undefined,
   });
   const ephemeralId = encodeEphemeralAgentId({ endpoint, model, sender, index: 1 });

@@ -6,12 +6,14 @@ import {
   isEphemeralAgentId,
   getEphemeralSender,
   appendAgentIdSuffix,
+  resolveLocalizedString,
   encodeEphemeralAgentId,
 } from 'librechat-data-provider';
 import type {
   Agents,
   TMessage,
   TConversation,
+  LocalizedString,
   TEndpointsConfig,
   TMessageContentParts,
 } from 'librechat-data-provider';
@@ -20,16 +22,6 @@ import type { LocalizeFunction, TMessageProps } from '~/common';
 
 export const TEXT_KEY_DIVIDER = '|||';
 export const STREAM_START_FAILED_METADATA_KEY = 'streamStartFailed';
-
-function resolveLabel(value: string | Record<string, string> | undefined): string | undefined {
-  if (value == null) {
-    return undefined;
-  }
-  if (typeof value === 'string') {
-    return value;
-  }
-  return value['en'] ?? Object.values(value)[0];
-}
 
 type SiblingIndexLookup = (parentMessageId: string | null | undefined) => number;
 
@@ -780,7 +772,7 @@ export const createDualMessageContent = (
   primaryConvo: TConversation,
   addedConvo: TConversation,
   endpointsConfig?: TEndpointsConfig,
-  modelSpecs?: { name: string; label?: string }[],
+  modelSpecs?: { name: string; label?: LocalizedString }[],
 ): TMessageContentParts[] => {
   // For real agents (agent_id starts with "agent_"), use agent_id directly
   // Otherwise create ephemeral ID from endpoint/model
@@ -797,7 +789,7 @@ export const createDualMessageContent = (
         : undefined;
     const primarySender = getEphemeralSender({
       modelLabel: primaryConvo.modelLabel,
-      specLabel: resolveLabel(primarySpec?.label),
+      specLabel: resolveLocalizedString(primarySpec?.label),
       modelDisplayLabel: primaryEndpoint
         ? endpointsConfig?.[primaryEndpoint]?.modelDisplayLabel
         : undefined,
@@ -837,7 +829,7 @@ export const createDualMessageContent = (
         : undefined;
     const addedSender = getEphemeralSender({
       modelLabel: addedConvo.modelLabel,
-      specLabel: resolveLabel(addedSpec?.label),
+      specLabel: resolveLocalizedString(addedSpec?.label),
       modelDisplayLabel: addedEndpoint
         ? endpointsConfig?.[addedEndpoint]?.modelDisplayLabel
         : undefined,
