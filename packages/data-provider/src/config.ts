@@ -16,7 +16,9 @@ import {
   isAgentsEndpoint,
   eReasoningParameterFormatSchema,
   eReasoningResponseKeySchema,
+  localizedStringSchema,
 } from './schemas';
+export type { LocalizedString } from './schemas';
 import {
   REFILL_INTERVAL_UNITS,
   MIN_BALANCE_RESERVATION_TTL_MS,
@@ -2114,10 +2116,6 @@ const termsOfServiceSchema = z.object({
 });
 
 export type TTermsOfService = z.infer<typeof termsOfServiceSchema>;
-
-// Schema for localized string (either simple string or language-keyed object)
-export const localizedStringSchema = z.union([z.string(), z.record(z.string())]);
-export type LocalizedString = z.infer<typeof localizedStringSchema>;
 
 export const mcpRefreshDefaults = {
   toolsRefreshInterval: 5 * 60 * 1000,

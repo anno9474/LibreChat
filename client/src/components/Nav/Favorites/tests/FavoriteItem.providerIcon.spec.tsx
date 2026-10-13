@@ -7,6 +7,9 @@ import FavoriteItem from '../FavoriteItem';
  *  FavoriteItem.spec.tsx which stubs it to assert layout. */
 jest.mock('~/hooks', () => ({
   useLocalize: () => (key: string) => key,
+  useLocalizedConfig:
+    () => (value: string | Record<string, string> | undefined, fallback: string) =>
+      typeof value === 'string' ? value : (value?.['en'] ?? fallback),
   useFavorites: () => ({
     removeFavoriteAgent: jest.fn(),
     removeFavoriteModel: jest.fn(),

@@ -5,6 +5,7 @@ import {
   isAgentsEndpoint,
   isEphemeralAgentId,
   getEphemeralSender,
+  resolveLocalizedString,
   encodeEphemeralAgentId,
 } from 'librechat-data-provider';
 import type {
@@ -167,7 +168,7 @@ export async function loadEphemeralAgent(
 
   const sender = getEphemeralSender({
     modelLabel: (model_parameters as AgentModelParameters & { modelLabel?: string })?.modelLabel,
-    specLabel: modelSpec?.label,
+    specLabel: resolveLocalizedString(modelSpec?.label),
     modelDisplayLabel: (endpointConfig as { modelDisplayLabel?: string } | undefined)
       ?.modelDisplayLabel,
   });

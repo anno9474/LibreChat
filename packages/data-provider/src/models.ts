@@ -1,16 +1,16 @@
 import { z } from 'zod';
 import type { AgentSubagentsConfig } from './types/agents';
 import type { TModelSpecPreset } from './schemas';
+import type { LocalizedString } from './schemas';
 import {
   EModelEndpoint,
   tModelSpecPresetSchema,
   eModelEndpointSchema,
   AuthType,
   authTypeSchema,
+  localizedStringSchema,
 } from './schemas';
 import { getMaxSubagents } from './limits';
-import { localizedStringSchema } from './config';
-import type { LocalizedString } from './config';
 
 type ModelSpecSubagentsConfig = Omit<AgentSubagentsConfig, 'graphs'>;
 

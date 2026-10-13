@@ -55,6 +55,7 @@ const {
   MAX_SUBAGENT_GRAPH_NODES,
   MAX_SUBAGENT_RUN_CONFIGS,
   isEphemeralAgentId,
+  resolveLocalizedString,
   resolveAllowedStatefulCodeEnvironments,
 } = require('librechat-data-provider');
 const {
@@ -1684,7 +1685,7 @@ const initializeClientWithProvider = async ({
 
   const sender = resolveSender({
     agent: primaryConfig,
-    specLabel: selectedModelSpec?.label,
+    specLabel: resolveLocalizedString(selectedModelSpec?.label),
     endpointOption: {
       ...endpointOption,
       model: endpointOption.model_parameters.model,
